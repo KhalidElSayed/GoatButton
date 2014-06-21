@@ -9,17 +9,27 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.alorma.floatingbutton.R;
-
 /**
  * Created by a557114 on 20/06/2014.
  */
-public class GoatLayout extends FrameLayout implements DirectionalScrollListener.OnDetectScrollListener {
+public class GoatLayout extends FrameLayout implements DirectionalScrollListener.OnCancelableDetectScrollListener {
 
-    private Button button;
-    private AbsListView absListView;
-    private boolean isHidden;
-    private boolean isShown;
+
+    private View floatView;
+    private ObjectAnimator upAnimation;
+    private ObjectAnimator downAnimation;
+    private float fraction = 1.0f;
+    private FLOAT_STATE float_state;
+
+    private int marginRight;
+    private int marginBottom;
+    private float density;
+    private long timeShowOnStop;
+    private long durationIn;
+    private long durationOut;
+
+    private AbsListView.OnScrollListener handlerScroll;
+    private DirectionalScrollListener directionalScrollListener;
 
     public GoatLayout(Context context) {
         super(context);
@@ -37,23 +47,32 @@ public class GoatLayout extends FrameLayout implements DirectionalScrollListener
     }
 
     private void init() {
-
+        density = getResources().getDisplayMetrics().density;
+        marginRight = 10;
+        marginBottom = 10;
+        timeShowOnStop = 400;
+        durationIn = 300;
+        durationOut = 300;
     }
 
-    @Override
-    public void addView(View child) {
-        super.addView(child);
-        if (child instanceof AbsListView) {
-            ((AbsListView) child).setOnScrollListener(new DirectionalScrollListener(this));
+    public void setFloatView(View floatView) {
+        this.floatView = floatView;
+        if (floatView.getLayoutParams() == null) {
+            int squareSize = (int) (50 * density);
+            LayoutParams layoutParams = new LayoutParams(squareSize, squareSize);
+            floatView.setLayoutParams(layoutParams);
         }
+        float_state = FLOAT_STATE.VISIBLE;
+        addView(floatView);
+        postInvalidate();
     }
 
     @Override
     public void addView(View child, ViewGroup.LayoutParams params) {
         super.addView(child, params);
         if (child instanceof AbsListView) {
-            absListView = (AbsListView) child;
-            absListView.setOnScrollListener(new DirectionalScrollListener(this));
+            directionalScrollListener = new DirectionalScrollListener(this, handlerScroll, timeShowOnStop);
+            ((AbsListView) child).setOnScrollListener(directionalScrollListener);
         }
     }
 
@@ -61,109 +80,167 @@ public class GoatLayout extends FrameLayout implements DirectionalScrollListener
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
 
-        if (button != null) {
-            button.layout(right - 10 - 200, bottom - 10 - 200, right - 10, bottom - 10);
+        if (floatView != null) {
+            floatView.layout(right - getMarginRight() - floatView.getMeasuredWidth(),
+                    bottom - getMarginBottom() - floatView.getMeasuredHeight(),
+                    right - getMarginRight(),
+                    bottom - getMarginBottom());
         }
     }
 
     @Override
     public void onUpScrolling() {
-        button.setText("U");
-        if (isHidden) {
-            PropertyValuesHolder pvhY = PropertyValuesHolder.ofFloat(Y, button.getY(),
-                    this.getBottom() - button.getMeasuredHeight() - 10);
-            PropertyValuesHolder pvhA = PropertyValuesHolder.ofFloat(ALPHA, 0.0f, 1.0f);
-
-            ObjectAnimator animator = ObjectAnimator.ofPropertyValuesHolder(button, pvhY, pvhA);
-
-            animator.setDuration(300);
-
-            animator.setRepeatCount(0);
-
-            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                @Override
-                public void onAnimationUpdate(ValueAnimator valueAnimator) {
-
-                }
-            });
-
-            animator.addListener(new Animator.AnimatorListener() {
-                @Override
-                public void onAnimationStart(Animator animator) {
-
-                }
-
-                @Override
-                public void onAnimationEnd(Animator animator) {
-                    isShown = true;
-                }
-
-                @Override
-                public void onAnimationCancel(Animator animator) {
-
-                }
-
-                @Override
-                public void onAnimationRepeat(Animator animator) {
-
-                }
-            });
-
-            animator.start();
+        if (float_state == FLOAT_STATE.INVISIBLE) {
+            getUpAnimation().start();
         }
     }
 
     @Override
     public void onDownScrolling() {
-        button.setText("D");
-        if (isShown) {
-
-            PropertyValuesHolder pvhY = PropertyValuesHolder.ofFloat(Y, button.getTop(), this.getBottom() + button.getMeasuredHeight());
-            PropertyValuesHolder pvhA = PropertyValuesHolder.ofFloat(ALPHA, 1.0f, 0.0f);
-
-            ObjectAnimator animator = ObjectAnimator.ofPropertyValuesHolder(button, pvhY, pvhA);
-
-            animator.setDuration(300);
-
-            animator.setRepeatCount(0);
-
-            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                @Override
-                public void onAnimationUpdate(ValueAnimator valueAnimator) {
-
-                }
-            });
-
-            animator.addListener(new Animator.AnimatorListener() {
-                @Override
-                public void onAnimationStart(Animator animator) {
-
-                }
-
-                @Override
-                public void onAnimationEnd(Animator animator) {
-                        isHidden = true;
-                }
-
-                @Override
-                public void onAnimationCancel(Animator animator) {
-
-                }
-
-                @Override
-                public void onAnimationRepeat(Animator animator) {
-
-                }
-            });
-
-            animator.start();
+        if (float_state == FLOAT_STATE.VISIBLE) {
+            getDownAnimation().start();
         }
     }
 
-    public void setButton(Button button) {
-        this.button = button;
-        isShown = true;
-        addView(button);
+    @Override
+    public void onScrollStop() {
+        if (float_state == FLOAT_STATE.INVISIBLE) {
+            getDownAnimation().cancel();
+            getUpAnimation().start();
+        }
+    }
+
+    private ObjectAnimator getUpAnimation() {
+        if (upAnimation == null) {
+            float initial = floatView.getY();
+            float end = getBottom() - getMarginBottom() - floatView.getMeasuredHeight();
+
+            PropertyValuesHolder pvhF = PropertyValuesHolder.ofFloat(Y, initial, end);
+
+            upAnimation = ObjectAnimator.ofPropertyValuesHolder(floatView, pvhF);
+        }
+
+        upAnimation.setDuration(durationIn);
+        upAnimation.setRepeatCount(0);
+
+        FloatAnimatorListener floatAnimatorListener = new FloatAnimatorListener(FLOAT_STATE.VISIBLE);
+
+        upAnimation.addUpdateListener(floatAnimatorListener);
+        upAnimation.addListener(floatAnimatorListener);
+
+        return upAnimation;
+    }
+
+    private ObjectAnimator getDownAnimation() {
+        if (downAnimation == null) {
+
+            float initial = floatView.getY() * fraction;
+            float end = getBottom() + floatView.getMeasuredHeight();
+
+            PropertyValuesHolder pvhF = PropertyValuesHolder.ofFloat(Y, initial, end);
+
+            downAnimation = ObjectAnimator.ofPropertyValuesHolder(floatView, pvhF);
+        }
+
+        downAnimation.setDuration(durationOut);
+        downAnimation.setRepeatCount(0);
+
+        FloatAnimatorListener floatAnimatorListener = new FloatAnimatorListener(FLOAT_STATE.INVISIBLE);
+
+        downAnimation.addUpdateListener(floatAnimatorListener);
+        downAnimation.addListener(floatAnimatorListener);
+        return downAnimation;
+    }
+
+    private enum FLOAT_STATE {
+        VISIBLE,
+        INVISIBLE,
+        RUNING;
+    }
+
+    private class FloatAnimatorListener implements Animator.AnimatorListener, ValueAnimator.AnimatorUpdateListener {
+
+        private FLOAT_STATE stateEnd;
+
+        public FloatAnimatorListener(FLOAT_STATE stateEnd) {
+            this.stateEnd = stateEnd;
+        }
+
+        @Override
+        public void onAnimationStart(Animator animation) {
+            float_state = FLOAT_STATE.RUNING;
+        }
+
+        @Override
+        public void onAnimationEnd(Animator animation) {
+            float_state = stateEnd;
+        }
+
+        @Override
+        public void onAnimationCancel(Animator animation) {
+
+        }
+
+        @Override
+        public void onAnimationRepeat(Animator animation) {
+
+        }
+
+        @Override
+        public void onAnimationUpdate(ValueAnimator animation) {
+            fraction = animation.getAnimatedFraction();
+        }
+    }
+
+    public int getMarginRight() {
+        return (int) (marginRight * density);
+    }
+
+    public void setMarginRight(int marginRight) {
+        this.marginRight = marginRight;
         postInvalidate();
+    }
+
+    public int getMarginBottom() {
+        return (int) (marginBottom * density);
+    }
+
+    public void setMarginBottom(int marginBottom) {
+        this.marginBottom = marginBottom;
+        postInvalidate();
+    }
+
+    public long getTimeShowOnStop() {
+        return timeShowOnStop;
+    }
+
+    public void setTimeShowOnStop(long timeShowOnStop) {
+        this.timeShowOnStop = timeShowOnStop;
+        directionalScrollListener.setCountdownStop(timeShowOnStop);
+    }
+
+    public AbsListView.OnScrollListener getHandlerScroll() {
+        return handlerScroll;
+    }
+
+    public void setHandlerScroll(AbsListView.OnScrollListener handerScroll) {
+        this.handlerScroll = handerScroll;
+        directionalScrollListener.setHandlerScroll(handlerScroll);
+    }
+
+    public long getDurationIn() {
+        return durationIn;
+    }
+
+    public void setDurationIn(long durationIn) {
+        this.durationIn = durationIn;
+    }
+
+    public long getDurationOut() {
+        return durationOut;
+    }
+
+    public void setDurationOut(long durationOut) {
+        this.durationOut = durationOut;
     }
 }
