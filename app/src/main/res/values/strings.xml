@@ -3,6 +3,6 @@
 
     <string name="app_name">FloatingButton</string>
     <string name="hello_world">Hello world!</string>
-    <string name="action_settings">\' " Searching \' \" for &quot; N \&quot;</string>
+    <string name="action_settings">Settings</string>
 
 </resources>

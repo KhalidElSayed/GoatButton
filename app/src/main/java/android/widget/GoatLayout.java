@@ -46,7 +46,8 @@ public class GoatLayout extends FrameLayout implements DirectionalScrollListener
         init();
     }
 
-    private void init() {
+    protected void init() {
+        isInEditMode();
         density = getResources().getDisplayMetrics().density;
         marginRight = 10;
         marginBottom = 10;
@@ -77,11 +78,20 @@ public class GoatLayout extends FrameLayout implements DirectionalScrollListener
     }
 
     @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+
+        if (floatView != null) {
+            floatView.measure(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+        }
+    }
+
+    @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
 
         if (floatView != null) {
-            floatView.layout(right - getMarginRight() - floatView.getMeasuredWidth(),
+            floatView.layout(right - getMarginRight() - 400,
                     bottom - getMarginBottom() - floatView.getMeasuredHeight(),
                     right - getMarginRight(),
                     bottom - getMarginBottom());

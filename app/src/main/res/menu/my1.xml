@@ -1,0 +1,17 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:context=".MyActivity">
+
+    <item
+        android:id="@+id/action_1"
+        android:title="Action 1"
+        android:icon="@drawable/ic_launcher"
+        app:showAsAction="always"/>
+    <item
+        android:id="@+id/action_2"
+        android:title="Action 2"
+        android:icon="@drawable/ic_launcher_2"
+        app:showAsAction="always"/>
+
+</menu>

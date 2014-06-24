@@ -4,17 +4,36 @@
     android:layout_height="match_parent"
     tools:context=".MyActivity">
 
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/linearLayout">
 
-    <GoatLayout
+        <android.widget.MenuItemView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/icon" />
+    </LinearLayout>
+
+    <android.widget.MenuLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/menu2"
+        android:orientation="horizontal"
+        android:layout_below="@+id/linearLayout" />
+
+    <GoatMenuLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/ly">
+        android:id="@+id/ly"
+        android:layout_below="@+id/menu2">
 
         <ListView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:id="@+id/list" />
 
-    </GoatLayout>
+    </GoatMenuLayout>
 
 </RelativeLayout>
